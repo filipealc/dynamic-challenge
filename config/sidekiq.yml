@@ -1,0 +1,11 @@
+:concurrency: 5
+:queues:
+  - [default, 1]
+  - [blockchain, 2]
+  - [mailers, 1]
+
+:cron:
+  check_incoming_transactions:
+    cron: "*/1 * * * *"  # Every minute
+    class: "CheckIncomingTransactionsJob"
+    queue: blockchain 

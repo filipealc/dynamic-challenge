@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Dynamic Wallet Challenge</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+      .gradient-bg {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+    </style>
+  </head>
+
+  <body class="bg-gray-50 min-h-screen flex flex-col">
+    <!-- Navigation -->
+    <nav class="gradient-bg shadow-lg">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center py-4">
+          <div class="flex items-center">
+            <i class="fas fa-wallet text-white text-2xl mr-3"></i>
+            <%= link_to "Dynamic Wallet", root_path, class: "text-white text-xl font-bold" %>
+          </div>
+          
+          <div class="flex items-center space-x-4">
+            <% if logged_in? %>
+              <div class="flex items-center text-white">
+                <% if current_user.picture %>
+                  <img src="<%= current_user.picture %>" alt="<%= current_user.name %>" class="w-8 h-8 rounded-full mr-2">
+                <% end %>
+                <span class="mr-4">Hello, <%= current_user.name %>!</span>
+                <%= link_to "Logout", logout_path, class: "bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors" %>
+              </div>
+            <% else %>
+              <%= link_to "Login", "/auth/auth0", method: :post, class: "bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-6 py-2 rounded-lg transition-colors" %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    <% if notice %>
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+          <%= notice %>
+        </div>
+      </div>
+    <% end %>
+
+    <% if alert %>
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <%= alert %>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Main Content -->
+    <main class="flex-1">
+      <%= yield %>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <p>&copy; 2024 Dynamic Wallet Challenge. Built with Ruby on Rails & Auth0.</p>
+      </div>
+    </footer>
+  </body>
+</html> 

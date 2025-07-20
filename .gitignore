@@ -1,0 +1,98 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# Rails
+*.rbc
+capybara-*.html
+.rspec
+/db/*.sqlite3
+/db/*.sqlite3-journal
+/db/*.sqlite3-[0-9]*
+/public/system
+/coverage/
+/spec/tmp
+*.orig
+rerun.txt
+pickle-email-*.html
+
+# Ignore all logfiles and tempfiles.
+/log/*
+/tmp/*
+!/log/.keep
+!/tmp/.keep
+
+# Ignore pidfiles, but keep the directory.
+/tmp/pids/*
+!/tmp/pids/
+!/tmp/pids/.keep
+
+# Ignore uploaded files in development.
+/storage/*
+!/storage/.keep
+/tmp/storage/*
+!/tmp/storage/
+!/tmp/storage/.keep
+
+# Ignore master key for decrypting credentials and more.
+# Note: credentials.yml.enc should be committed for deployment
+/config/master.key
+
+# Ignore application configuration
+/config/application.yml
+
+# Ignore environment files
+.env
+.env.*
+!.env.example
+
+# Bundle
+vendor/bundle
+.bundle
+
+# RVM
+.rvmrc
+
+# rbenv
+.ruby-version
+.ruby-gemset
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# Backup files
+*.bak
+*.backup
+
+# Cache directories
+.cache/
+.tmp/
+
+# Coverage reports
+coverage/
+.coveralls.yml
+
+# Docker volumes
+docker-compose.override.yml
+
+# Test artifacts
+test/tmp/
+test/version_tmp/
+
+# Rails specific
+config/secrets.yml

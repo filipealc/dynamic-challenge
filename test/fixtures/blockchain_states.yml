@@ -1,0 +1,7 @@
+last_processed_block:
+  key: "last_processed_block"
+  value: "1000"
+
+processing_lock:
+  key: "processing_lock"
+  value: "false" 

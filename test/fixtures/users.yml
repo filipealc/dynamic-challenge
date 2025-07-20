@@ -1,0 +1,9 @@
+one:
+  auth0_id: "auth0|123456"
+  email: "user1@example.com"
+  name: "User One"
+
+two:
+  auth0_id: "auth0|789012"
+  email: "user2@example.com"
+  name: "User Two" 

@@ -1,0 +1,81 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: dynamic_wallet_challenge_${RAILS_ENV:-development}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build # Use the build stage which has all the dev dependencies
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/rails
+      - gem_cache:/usr/local/bundle
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/dynamic_wallet_challenge_${RAILS_ENV:-development}
+      REDIS_URL: redis://redis:6379/0
+      RAILS_ENV: ${RAILS_ENV:-development}
+      BUNDLE_WITHOUT: ""
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
+    working_dir: /rails
+    command: bash -c "rm -f tmp/pids/server.pid && bundle install && bundle exec rails db:migrate && bundle exec rails blockchain:initialize && bundle exec rails server -b 0.0.0.0"
+
+  sidekiq:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build # Use the build stage which has all the dev dependencies
+    volumes:
+      - .:/rails
+      - gem_cache:/usr/local/bundle
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/dynamic_wallet_challenge_${RAILS_ENV:-development}
+      REDIS_URL: redis://redis:6379/0
+      RAILS_ENV: ${RAILS_ENV:-development}
+      BUNDLE_WITHOUT: ""
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    working_dir: /rails
+    command: bash -c "bundle install && bundle exec sidekiq"
+
+volumes:
+  postgres_data:
+  redis_data:
+  gem_cache:

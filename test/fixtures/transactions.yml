@@ -1,0 +1,17 @@
+one:
+  wallet: one
+  transaction_hash: "0xabc123def456789"
+  transaction_type: "send"
+  amount: 0.1
+  to_address: "0x1234567890abcdef1234567890abcdef12345678"
+  status: "confirmed"
+  block_number: 1234567
+
+two:
+  wallet: one
+  transaction_hash: "0xdef456abc789123"
+  transaction_type: "receive"
+  amount: 0.5
+  from_address: "0x1234567890abcdef1234567890abcdef12345678"
+  status: "confirmed"
+  block_number: 1234568 

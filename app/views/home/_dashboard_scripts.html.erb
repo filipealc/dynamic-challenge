@@ -1,0 +1,427 @@
+<script>
+// Refresh wallet data (balance + transactions) in one call
+async function refreshWalletData(walletId) {
+  try {
+    const response = await fetch(`/api/v1/wallets/${walletId}`);
+    const data = await response.json();
+    
+    if (response.ok && data.wallet) {
+      // Update balance
+      document.getElementById(`balance-${walletId}`).textContent = `${data.wallet.balance.toFixed(6)} ETH`;
+      
+      // Update transactions
+      if (data.wallet.transactions) {
+        updateTransactionsDisplay(walletId, data.wallet.transactions);
+      }
+      
+      // Update the last checked timestamp
+      const now = new Date();
+      const timestamp = now.toLocaleString();
+      const timestampElement = document.getElementById(`last-refreshed-${walletId}`);
+      if (timestampElement) {
+        timestampElement.textContent = `Last checked at: ${timestamp}`;
+      }
+    }
+  } catch (error) {
+    console.error(`Error refreshing wallet ${walletId}:`, error);
+  }
+}
+
+// Send transaction
+async function sendTransaction(event, walletId) {
+  event.preventDefault();
+  
+  // Get the submit button and form inputs
+  const submitButton = event.target.querySelector('button[type="submit"]');
+  const form = event.target;
+  const inputs = form.querySelectorAll('input, textarea');
+  const originalText = submitButton.innerHTML;
+  
+  // Show loading state and disable form
+  submitButton.disabled = true;
+  submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Sending...';
+  inputs.forEach(input => input.disabled = true);
+  
+  const to = document.getElementById(`to-address-${walletId}`).value;
+  const amount = document.getElementById(`amount-${walletId}`).value;
+  
+  try {
+    const response = await fetch(`/api/v1/wallets/${walletId}/send_transaction`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('[name="csrf-token"]').content
+      },
+      body: JSON.stringify({ to, amount })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      showModal('Transaction Sent!', `
+        <p class="text-green-600 mb-2">✅ Transaction sent successfully!</p>
+        <p class="text-sm text-gray-600 mb-2"><strong>Transaction Hash:</strong></p>
+        <p class="font-mono text-xs break-all bg-gray-100 p-2 rounded">${data.transaction_hash}</p>
+        <p class="text-sm text-gray-600 mt-2">The transaction is now pending confirmation on the blockchain.</p>
+      `);
+      document.getElementById(`send-form-${walletId}`).reset();
+      
+      // Refresh wallet data immediately to show updated balance and new transaction
+      refreshWalletData(walletId);
+    } else {
+      showModal('Transaction Failed', `
+        <p class="text-red-600">❌ ${data.error || 'Unknown error occurred'}</p>
+      `);
+    }
+  } catch (error) {
+    showModal('Error', `<p class="text-red-600">❌ Network error: ${error.message}</p>`);
+  } finally {
+    // Restore button and form state
+    submitButton.disabled = false;
+    submitButton.innerHTML = originalText;
+    inputs.forEach(input => input.disabled = false);
+  }
+}
+
+// Sign message
+async function signMessage(event, walletId) {
+  event.preventDefault();
+  
+  // Get the submit button and form inputs
+  const submitButton = event.target.querySelector('button[type="submit"]');
+  const form = event.target;
+  const inputs = form.querySelectorAll('input, textarea');
+  const originalText = submitButton.innerHTML;
+  
+  // Show loading state and disable form
+  submitButton.disabled = true;
+  submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Signing...';
+  inputs.forEach(input => input.disabled = true);
+  
+  const message = document.getElementById(`message-${walletId}`).value;
+  
+  try {
+    const response = await fetch(`/api/v1/wallets/${walletId}/sign_message`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('[name="csrf-token"]').content
+      },
+      body: JSON.stringify({ message })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      showModal('Message Signed!', `
+        <p class="text-green-600 mb-2">✅ Message signed successfully!</p>
+        <p class="text-sm text-gray-600 mb-2"><strong>Original Message:</strong></p>
+        <p class="bg-gray-100 p-2 rounded mb-2">${message}</p>
+        <p class="text-sm text-gray-600 mb-2"><strong>Signature:</strong></p>
+        <p class="font-mono text-xs break-all bg-gray-100 p-2 rounded">${data.signature}</p>
+      `);
+      document.getElementById(`sign-form-${walletId}`).reset();
+    } else {
+      showModal('Signing Failed', `
+        <p class="text-red-600">❌ ${data.error || 'Unknown error occurred'}</p>
+      `);
+    }
+  } catch (error) {
+    showModal('Error', `<p class="text-red-600">❌ Network error: ${error.message}</p>`);
+  } finally {
+    // Restore button and form state
+    submitButton.disabled = false;
+    submitButton.innerHTML = originalText;
+    inputs.forEach(input => input.disabled = false);
+  }
+}
+
+// Modal functions
+function showModal(title, content) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-content').innerHTML = content;
+  document.getElementById('result-modal').classList.remove('hidden');
+  document.getElementById('result-modal').classList.add('flex');
+}
+
+function closeModal() {
+  document.getElementById('result-modal').classList.add('hidden');
+  document.getElementById('result-modal').classList.remove('flex');
+}
+
+// Load balances on page load
+document.addEventListener('DOMContentLoaded', function() {
+  // Start global auto-refresh
+  startGlobalAutoRefresh();
+});
+
+// Global auto-refresh system
+function startGlobalAutoRefresh() {
+  // Refresh immediately
+  refreshAllWallets();
+  
+  // Then refresh every 30 seconds
+  setInterval(() => {
+    refreshAllWallets();
+  }, 30000); // 30 seconds
+}
+
+// Refresh all wallets (balance + transactions)
+async function refreshAllWallets() {
+  <% @wallets.each do |wallet| %>
+    await refreshWalletData(<%= wallet.id %>);
+  <% end %>
+}
+
+// Refresh transactions for a specific wallet (keep for manual refresh button)
+async function refreshWalletTransactions(walletId) {
+  try {
+    const response = await fetch(`/api/v1/wallets/${walletId}`);
+    const data = await response.json();
+    
+    if (response.ok && data.wallet) {
+      // Update balance
+      document.getElementById(`balance-${walletId}`).textContent = `${data.wallet.balance.toFixed(6)} ETH`;
+      
+      // Update transactions
+      if (data.wallet.transactions) {
+        updateTransactionsDisplay(walletId, data.wallet.transactions);
+      }
+    }
+  } catch (error) {
+    console.error(`Error refreshing transactions for wallet ${walletId}:`, error);
+  }
+}
+
+// Update the transactions display for a wallet
+function updateTransactionsDisplay(walletId, transactions) {
+  const container = document.getElementById(`transactions-${walletId}`);
+  
+  if (!transactions || transactions.length === 0) {
+    container.innerHTML = '<p class="text-gray-500 text-center py-8">No transactions yet</p>';
+    return;
+  }
+  
+  const transactionsHtml = transactions.map(tx => `
+    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+      <div class="flex items-center">
+        <i class="fas fa-${tx.transaction_type === 'send' ? 'arrow-up' : 'arrow-down'} 
+           text-${tx.transaction_type === 'send' ? 'red' : 'green'}-500 mr-3"></i>
+        <div>
+          <p class="font-medium text-gray-900">
+            ${tx.transaction_type.charAt(0).toUpperCase() + tx.transaction_type.slice(1)} ${tx.amount} ETH
+          </p>
+          <p class="text-xs text-gray-500">
+            ${tx.transaction_type === 'send' ? `To: ${tx.to_address.substring(0, 11)}...` : `From: ${tx.from_address.substring(0, 11)}...`}
+          </p>
+          ${tx.transaction_hash ? `
+            <div class="flex items-center mt-1">
+              <p class="text-xs text-gray-400 mr-2">Hash:</p>
+              <a href="https://sepolia.etherscan.io/tx/${tx.transaction_hash}" 
+                 target="_blank" 
+                 class="text-xs text-indigo-600 hover:text-indigo-800 font-mono break-all">
+                ${tx.transaction_hash.substring(0, 11)}...
+                <i class="fas fa-external-link-alt ml-1 text-xs"></i>
+              </a>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+      <div class="text-right">
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+           bg-${tx.status === 'confirmed' ? 'green' : tx.status === 'pending' ? 'yellow' : 'red'}-100 
+           text-${tx.status === 'confirmed' ? 'green' : tx.status === 'pending' ? 'yellow' : 'red'}-800">
+          ${tx.status.charAt(0).toUpperCase() + tx.status.slice(1)}
+        </span>
+        <p class="text-xs text-gray-500 mt-1">${new Date(tx.created_at).toLocaleString()}</p>
+        <button onclick="showTransactionDetails(${tx.id})" 
+                class="text-xs text-indigo-600 hover:text-indigo-800 mt-1 font-medium">
+          <i class="fas fa-info-circle mr-1"></i>View Details
+        </button>
+      </div>
+    </div>
+  `).join('');
+  
+  container.innerHTML = `<div class="space-y-2">${transactionsHtml}</div>`;
+}
+
+// Show transaction details
+async function showTransactionDetails(transactionId) {
+  try {
+    const response = await fetch(`/api/v1/transactions/${transactionId}`);
+    const data = await response.json();
+    
+    if (response.ok && data.transaction) {
+      const tx = data.transaction;
+      
+      const detailsHtml = `
+        <div class="space-y-4">
+          <!-- Transaction Type and Amount -->
+          <div class="text-center">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-${tx.transaction_type === 'send' ? 'red' : 'green'}-100 mb-3">
+              <i class="fas fa-${tx.transaction_type === 'send' ? 'arrow-up' : 'arrow-down'} text-${tx.transaction_type === 'send' ? 'red' : 'green'}-600 text-2xl"></i>
+            </div>
+            <h4 class="text-xl font-bold text-gray-900">${tx.transaction_type.charAt(0).toUpperCase() + tx.transaction_type.slice(1)} ${tx.amount} ETH</h4>
+            <p class="text-sm text-gray-600">${tx.status.charAt(0).toUpperCase() + tx.status.slice(1)}</p>
+          </div>
+          
+          <!-- Transaction Hash -->
+          <div class="bg-gray-50 p-3 rounded-lg">
+            <p class="text-xs text-gray-500 mb-1">Transaction Hash</p>
+            <div class="flex items-center justify-between">
+              <p class="font-mono text-sm break-all">${tx.transaction_hash || 'Pending...'}</p>
+              ${tx.transaction_hash ? `
+                <a href="https://sepolia.etherscan.io/tx/${tx.transaction_hash}" 
+                   target="_blank" 
+                   class="text-indigo-600 hover:text-indigo-800 ml-2">
+                  <i class="fas fa-external-link-alt"></i>
+                </a>
+              ` : ''}
+            </div>
+          </div>
+          
+          <!-- Addresses -->
+          <div class="grid grid-cols-1 gap-3">
+            <div class="bg-gray-50 p-3 rounded-lg">
+              <p class="text-xs text-gray-500 mb-1">From Address</p>
+              <p class="font-mono text-sm break-all">${tx.from_address}</p>
+            </div>
+            <div class="bg-gray-50 p-3 rounded-lg">
+              <p class="text-xs text-gray-500 mb-1">To Address</p>
+              <p class="font-mono text-sm break-all">${tx.to_address}</p>
+            </div>
+          </div>
+          
+          <!-- Transaction Details -->
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-gray-50 p-3 rounded-lg">
+              <p class="text-xs text-gray-500 mb-1">Block Number</p>
+              <p class="text-sm font-medium">${tx.block_number || 'Pending...'}</p>
+            </div>
+            <div class="bg-gray-50 p-3 rounded-lg">
+              <p class="text-xs text-gray-500 mb-1">Gas Used</p>
+              <p class="text-sm font-medium">${tx.gas_used ? tx.gas_used.toLocaleString() : 'Pending...'}</p>
+            </div>
+          </div>
+          
+          <!-- Wallet Info -->
+          <div class="bg-blue-50 p-3 rounded-lg">
+            <p class="text-xs text-blue-600 mb-1">Wallet</p>
+            <p class="text-sm font-medium text-blue-800">${tx.wallet.name}</p>
+            <p class="text-xs text-blue-600 font-mono break-all">${tx.wallet.address}</p>
+          </div>
+          
+          <!-- Timestamps -->
+          <div class="grid grid-cols-1 gap-2 text-xs text-gray-500">
+            <p><strong>Created:</strong> ${new Date(tx.created_at).toLocaleString()}</p>
+            ${tx.updated_at !== tx.created_at ? `<p><strong>Updated:</strong> ${new Date(tx.updated_at).toLocaleString()}</p>` : ''}
+          </div>
+        </div>
+      `;
+      
+      showModal('Transaction Details', detailsHtml);
+    } else {
+      showModal('Error', `<p class="text-red-600">❌ Failed to load transaction details</p>`);
+    }
+  } catch (error) {
+    console.error('Error fetching transaction details:', error);
+    showModal('Error', `<p class="text-red-600">❌ Network error: ${error.message}</p>`);
+  }
+}
+
+// Copy to clipboard function
+function copyToClipboard(text) {
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand('copy');
+  document.body.removeChild(textarea);
+  showModal('Copied!', `<p class="text-green-600">✅ Address copied to clipboard!</p>`);
+}
+
+// Add wallet modal functions
+function showAddWalletModal() {
+  document.getElementById('add-wallet-modal').classList.remove('hidden');
+  document.getElementById('add-wallet-modal').classList.add('flex');
+}
+
+function closeAddWalletModal() {
+  document.getElementById('add-wallet-modal').classList.add('hidden');
+  document.getElementById('add-wallet-modal').classList.remove('flex');
+  document.getElementById('add-wallet-form').reset();
+}
+
+// Toggle wallet collapse
+function toggleWalletCollapse(walletId) {
+  const content = document.getElementById(`wallet-content-${walletId}`);
+  const icon = document.getElementById(`collapse-icon-${walletId}`);
+  
+  if (content.classList.contains('hidden')) {
+    // Expand
+    content.classList.remove('hidden');
+    icon.classList.remove('fa-chevron-right');
+    icon.classList.add('fa-chevron-down');
+  } else {
+    // Collapse
+    content.classList.add('hidden');
+    icon.classList.remove('fa-chevron-down');
+    icon.classList.add('fa-chevron-right');
+  }
+}
+
+// Create wallet function
+async function createWallet(event) {
+  event.preventDefault();
+  
+  // Get the submit button and form inputs
+  const submitButton = event.target.querySelector('button[type="submit"]');
+  const form = event.target;
+  const inputs = form.querySelectorAll('input, textarea');
+  const originalText = submitButton.innerHTML;
+  
+  // Show loading state and disable form
+  submitButton.disabled = true;
+  submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creating...';
+  inputs.forEach(input => input.disabled = true);
+  
+  const name = document.getElementById('wallet-name').value;
+  
+  try {
+    const response = await fetch('/api/v1/wallets', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('[name="csrf-token"]').content
+      },
+      body: JSON.stringify({ wallet: { name } })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      showModal('Wallet Created!', `
+        <p class="text-green-600 mb-2">✅ Wallet created successfully!</p>
+        <p class="text-sm text-gray-600 mb-2"><strong>Name:</strong> ${data.wallet.name}</p>
+        <p class="text-sm text-gray-600 mb-2"><strong>Address:</strong></p>
+        <p class="font-mono text-xs break-all bg-gray-100 p-2 rounded">${data.wallet.address}</p>
+        <p class="text-sm text-gray-600 mt-2">Your new wallet is ready to use!</p>
+      `);
+      closeAddWalletModal();
+      // Reload the page to show the new wallet
+      setTimeout(() => location.reload(), 2000);
+    } else {
+      showModal('Wallet Creation Failed', `
+        <p class="text-red-600">❌ ${data.error || 'Unknown error occurred'}</p>
+      `);
+    }
+  } catch (error) {
+    showModal('Error', `<p class="text-red-600">❌ Network error: ${error.message}</p>`);
+  } finally {
+    // Restore button and form state
+    submitButton.disabled = false;
+    submitButton.innerHTML = originalText;
+    inputs.forEach(input => input.disabled = false);
+  }
+}
+</script> 
